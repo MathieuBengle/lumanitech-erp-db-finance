@@ -107,20 +107,6 @@ validate_sql_file() {
     fi
 }
 
-# Function to check MySQL syntax if available
-check_mysql_syntax() {
-    local file=$1
-    
-    if ! command -v mysql &> /dev/null; then
-        return 0  # Skip if MySQL not available
-    fi
-    
-    # Try to parse the SQL (dry-run)
-    # Note: This requires MySQL to be running
-    # For CI, we may skip this or use a docker container
-    return 0
-}
-
 # Main execution
 main() {
     print_info "Starting SQL validation..."

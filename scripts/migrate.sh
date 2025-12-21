@@ -53,8 +53,10 @@ get_description() {
 # Function to check if migration is applied
 is_migration_applied() {
     local version=$1
-    local result=$(mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" -D "$DB_NAME" -sN -e \
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    local result=$(mysql -u "${MYSQL_USER:-root}" -D "$DB_NAME" -sN -e \
         "SELECT COUNT(*) FROM schema_migrations WHERE version = 'V$version' AND success = TRUE" 2>/dev/null || echo "0")
+    unset MYSQL_PWD
     
     if [ "$result" -gt 0 ]; then
         return 0  # Migration is applied
@@ -71,9 +73,11 @@ record_migration() {
     local execution_time=$4
     local installed_by="${USER:-system}"
     
-    mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" -D "$DB_NAME" -e \
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    mysql -u "${MYSQL_USER:-root}" -D "$DB_NAME" -e \
         "INSERT INTO schema_migrations (version, description, script_name, installed_by, execution_time, success) 
          VALUES ('V$version', '$description', '$script_name', '$installed_by', $execution_time, TRUE);"
+    unset MYSQL_PWD
 }
 
 # Function to apply migration
@@ -87,7 +91,14 @@ apply_migration() {
     
     local start_time=$(date +%s%3N)
     
-    mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" -D "$DB_NAME" < "$file"
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    mysql -u "${MYSQL_USER:-root}" -D "$DB_NAME" < "$file"
+    local exit_code=$?
+    unset MYSQL_PWD
+    
+    if [ $exit_code -ne 0 ]; then
+        return $exit_code
+    fi
     
     local end_time=$(date +%s%3N)
     local execution_time=$((end_time - start_time))
@@ -123,10 +134,13 @@ main() {
     fi
     
     # Check if database exists
-    if ! mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" -e "USE $DB_NAME" 2>/dev/null; then
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    if ! mysql -u "${MYSQL_USER:-root}" -e "USE $DB_NAME" 2>/dev/null; then
+        unset MYSQL_PWD
         print_error "Database $DB_NAME does not exist. Please run init_schema.sh first."
         exit 1
     fi
+    unset MYSQL_PWD
     
     # Get list of migration files
     migration_files=($(ls -1 "$MIGRATION_DIR"/V*.sql 2>/dev/null | sort -V))
@@ -159,8 +173,10 @@ main() {
     
     # Show current migration status
     print_info "Current migration status:"
-    mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" -D "$DB_NAME" -t -e \
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    mysql -u "${MYSQL_USER:-root}" -D "$DB_NAME" -t -e \
         "SELECT version, description, installed_on, execution_time FROM schema_migrations ORDER BY id;"
+    unset MYSQL_PWD
 }
 
 # Run main function

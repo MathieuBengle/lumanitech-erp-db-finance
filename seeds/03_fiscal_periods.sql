@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Seed: Fiscal Periods
 -- Description: Create fiscal periods for current year
+-- Note: Update the year annually or regenerate this file for your fiscal year
 -- ============================================================================
 
 USE lumanitech_erp_finance;

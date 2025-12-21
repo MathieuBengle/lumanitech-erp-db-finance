@@ -39,9 +39,12 @@ execute_seed() {
     
     print_info "Loading: $(basename "$file")"
     
-    mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" "$DB_NAME" < "$file"
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    mysql -u "${MYSQL_USER:-root}" "$DB_NAME" < "$file"
+    local exit_code=$?
+    unset MYSQL_PWD
     
-    if [ $? -eq 0 ]; then
+    if [ $exit_code -eq 0 ]; then
         print_info "✓ Successfully loaded $(basename "$file")"
         return 0
     else
@@ -87,10 +90,13 @@ main() {
     fi
     
     # Check if database exists
-    if ! mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" -e "USE $DB_NAME" 2>/dev/null; then
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    if ! mysql -u "${MYSQL_USER:-root}" -e "USE $DB_NAME" 2>/dev/null; then
+        unset MYSQL_PWD
         print_error "Database $DB_NAME does not exist. Please run init_schema.sh and migrate.sh first."
         exit 1
     fi
+    unset MYSQL_PWD
     
     # Execute seed files in order
     print_info "Loading seed files..."

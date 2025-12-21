@@ -49,13 +49,19 @@ execute_sql() {
     
     print_info "Executing: $(basename "$file")"
     
+    # Use MYSQL_PWD environment variable to avoid password in process list
+    export MYSQL_PWD="${MYSQL_PASSWORD}"
+    
     if [ -z "$db" ]; then
-        mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" < "$file"
+        mysql -u "${MYSQL_USER:-root}" < "$file"
     else
-        mysql -u "${MYSQL_USER:-root}" -p"${MYSQL_PASSWORD}" "$db" < "$file"
+        mysql -u "${MYSQL_USER:-root}" "$db" < "$file"
     fi
     
-    if [ $? -eq 0 ]; then
+    local exit_code=$?
+    unset MYSQL_PWD
+    
+    if [ $exit_code -eq 0 ]; then
         print_info "✓ Successfully executed $(basename "$file")"
         return 0
     else
