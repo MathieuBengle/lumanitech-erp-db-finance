@@ -10,10 +10,10 @@ This directory contains utility scripts for database management and CI/CD integr
 **Usage**:
 ```bash
 # Basic deployment (schema + migrations)
-./scripts/setup.sh
+./scripts/setup.sh --login-path=local
 
 # Deployment with seed data (dev/test only)
-./scripts/setup.sh --with-seeds
+./scripts/setup.sh --login-path=local --with-seeds
 
 # Override database name or login path
 ./scripts/deploy.sh --database=lumanitech_projects --login-path=local
