@@ -176,9 +176,9 @@ Recommended deployment process:
 5. **Production**: Apply migrations during maintenance window
 
 ```bash
-# Production deployment example
-export MYSQL_PASSWORD=$PROD_DB_PASSWORD
-./scripts/deploy.sh
+# Production deployment example (using mysql_config_editor)
+mysql_config_editor set --login-path=finance_prod --host=db-prod.example.com --user=finance_app
+./scripts/deploy.sh --login-path=finance_prod
 ```
 
 ## Documentation
