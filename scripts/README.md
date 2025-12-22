@@ -15,8 +15,11 @@ This directory contains utility scripts for database management and CI/CD integr
 # Deployment with seed data (dev/test only)
 ./scripts/setup.sh --with-seeds
 
-# Use specific login path
-./scripts/setup.sh --login-path=production
+# Override database name or login path
+./scripts/deploy.sh --database=lumanitech_projects --login-path=local
+
+# Override host/user or rely on interactive password
+./scripts/deploy.sh --host=127.0.0.1 --user=finance_admin
 
 # Show help
 ./scripts/setup.sh --help
@@ -30,9 +33,9 @@ This directory contains utility scripts for database management and CI/CD integr
 - Records migration history in `schema_migrations` table
 - Tracks execution time and success status
 
-**Features**:
 - Single script for all deployment tasks
-- Uses mysql_config_editor for secure credential management
+- Uses mysql_config_editor for secure credential management but fallbacks to an interactive prompt when no login path exists
+- Auto-detects the first available login path if none is provided and honors the MYSQL_LOGIN_PATH env var
 - Idempotent - safe to run multiple times
 - Skips already-applied migrations
 - Forward-only migration strategy
@@ -46,8 +49,8 @@ This directory contains utility scripts for database management and CI/CD integr
 - CI/CD deployment pipelines
 
 **Prerequisites**:
-- MySQL client with mysql_config_editor installed
-- Configured login path (see MySQL Login Path section below)
+- MySQL client with mysql_config_editor installed (required only if you rely on login paths)
+- Optional: configured login path for non-interactive runs (script falls back to interactive password entry)
 
 ---
 
@@ -135,21 +138,29 @@ mysql --login-path=local -e "SELECT 1;"
 
 ## Script Execution
 
+```bash
+# Ensure the deployment script is executable
+chmod +x ./scripts/deploy.sh
+```
+
 ### For a fresh setup:
 
 ```bash
-# 1. Set up login path
+# 1. Set up login path (optional, not required for the script to run)
 mysql_config_editor set --login-path=local \
   --host=localhost \
   --user=root \
   --password
 
 # 2. Deploy everything
-./scripts/setup.sh
+export MYSQL_LOGIN_PATH=local  # optional: avoids typing --login-path every time
+./scripts/deploy.sh
 
 # 3. (Optional) Add seed data for development
 ./scripts/setup.sh --with-seeds
 ```
+
+If you skip the login path, the script prompts once for the password and reuses it for the whole run so credentials never appear on the command line.
 
 ### For updates:
 

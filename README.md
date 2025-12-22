@@ -53,13 +53,17 @@ lumanitech-erp-db-finance/
 ```bash
 git clone https://github.com/MathieuBengle/lumanitech-erp-db-finance.git
 cd lumanitech-erp-db-finance
-```
+
+
 
 #### 2. Automated Setup (Recommended)
 
 Use the setup script to create and initialize the database in one step:
 
 ```bash
+# Make the deployment script executable (required once)
+chmod +x ./scripts/deploy.sh
+
 # Basic setup (without seed data)
 ./scripts/setup.sh
 ./scripts/setup.sh --login-path=local
@@ -100,11 +104,13 @@ export MYSQL_LOGIN_PATH=local
 ./scripts/setup.sh --with-seeds
 ```
 
-If you don't use `mysql_config_editor`, the script will prompt once for the
-database password and reuse it for all operations. Avoid passing passwords on
-the command line in production.
+The deployment script now supports several options that make CI-friendly setups consistent with the other repos:
 
-You only need to enter your MySQL password **once**.
+- `--login-path=NAME` or the `MYSQL_LOGIN_PATH` environment variable reuse a stored `mysql_config_editor` path instead of prompting for passwords.
+- `--database=NAME`, `--host=HOST` and `--user=USER` allow overriding the defaults (for example `./scripts/deploy.sh --database=lumanitech_projects --login-path=local`).
+- If no login path can be found, the script prompts once for the MySQL password and reuses it for the entire run, so credentials never appear on the command line.
+
+The script prints the selected login path (or reports that it will use an interactive password) at startup, so you always know which credentials were used.
 
 ### Validate SQL Files
 
