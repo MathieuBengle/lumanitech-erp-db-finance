@@ -4,77 +4,50 @@ This directory contains utility scripts for database management and CI/CD integr
 
 ## Available Scripts
 
-### init_schema.sh
-**Purpose**: Initialize the database schema from scratch
+### deploy.sh
+**Purpose**: Single deployment script for schema, migrations, and optionally seed data
 
 **Usage**:
 ```bash
-./scripts/init_schema.sh
+# Basic deployment (schema + migrations)
+./scripts/deploy.sh
+
+# Deployment with seed data (dev/test only)
+./scripts/deploy.sh --with-seeds
+
+# Use specific login path
+./scripts/deploy.sh --login-path=production
+
+# Show help
+./scripts/deploy.sh --help
 ```
 
 **What it does**:
-- Creates the database
-- Executes all schema files in order
-- Sets up initial table structure
-
-**When to use**:
-- Setting up a new development environment
-- Creating a fresh test database
-- Initial deployment to a new environment
-
-**Prerequisites**:
-- MySQL client installed
-- Database credentials (MYSQL_USER, MYSQL_PASSWORD)
-
----
-
-### migrate.sh
-**Purpose**: Apply database migrations with version tracking
-
-**Usage**:
-```bash
-./scripts/migrate.sh
-```
-
-**What it does**:
-- Checks which migrations have been applied
+- Creates database if it doesn't exist
+- Initializes schema (tables, constraints, indexes)
 - Applies pending migrations in order
+- Optionally loads seed data
 - Records migration history in `schema_migrations` table
 - Tracks execution time and success status
 
 **Features**:
+- Single script for all deployment tasks
+- Uses mysql_config_editor for secure credential management
 - Idempotent - safe to run multiple times
 - Skips already-applied migrations
 - Forward-only migration strategy
-- Detailed logging
+- Detailed colored logging
+- Command-line options for flexibility
 
 **When to use**:
-- After pulling new migrations from repository
-- During deployment process
-- Upgrading database to latest version
+- Initial setup of new environment
+- Deploying updates to existing database
+- Development environment refresh
+- CI/CD deployment pipelines
 
----
-
-### seed.sh
-**Purpose**: Load sample/reference data into database
-
-**Usage**:
-```bash
-./scripts/seed.sh
-```
-
-**What it does**:
-- Loads seed data files in order
-- Prompts for confirmation (safety measure)
-- Uses upsert patterns (idempotent)
-
-**When to use**:
-- Development environment setup
-- Testing data population
-- Demo environment preparation
-- Loading reference data (currencies, etc.)
-
-**Warning**: NOT for production use (except specific reference data)
+**Prerequisites**:
+- MySQL client with mysql_config_editor installed
+- Configured login path (see MySQL Login Path section below)
 
 ---
 
@@ -95,7 +68,7 @@ This directory contains utility scripts for database management and CI/CD integr
 - Files contain valid SQL keywords
 - Balanced parentheses
 - Migration naming conventions
-- UTF-8 encoding
+- UTF-8/ASCII encoding
 - File endings (newlines)
 - No tabs (warning only)
 
@@ -114,35 +87,88 @@ This directory contains utility scripts for database management and CI/CD integr
 
 ---
 
-## Environment Variables
+## MySQL Login Path
 
-All scripts support these environment variables:
+This repository uses **mysql_config_editor** for secure credential management instead of environment variables or command-line passwords.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| MYSQL_USER | MySQL username | root |
-| MYSQL_PASSWORD | MySQL password | (prompted) |
-| DB_NAME | Database name | lumanitech_erp_finance |
+### Setting up a Login Path
 
-**Example**:
+Create a login path for your environment:
+
 ```bash
-export MYSQL_USER=dbadmin
-export MYSQL_PASSWORD=secretpassword
-./scripts/migrate.sh
+# For local development
+mysql_config_editor set --login-path=local \
+  --host=localhost \
+  --user=root \
+  --password
+
+# For production
+mysql_config_editor set --login-path=production \
+  --host=prod-db-server \
+  --user=db_admin \
+  --password
 ```
 
-## Script Execution Order
+You will be prompted to enter the password securely.
 
-For a fresh setup:
+### Managing Login Paths
 
-1. **init_schema.sh** - Create database and base schema
-2. **migrate.sh** - Apply all migrations
-3. **seed.sh** - Load seed data (optional, dev only)
+```bash
+# List all configured login paths
+mysql_config_editor print --all
 
-For updates:
+# Remove a login path
+mysql_config_editor remove --login-path=local
 
-1. **validate.sh** - Validate new SQL files
-2. **migrate.sh** - Apply new migrations
+# Test a login path
+mysql --login-path=local -e "SELECT 1;"
+```
+
+### Benefits
+
+- ✅ **Security**: Passwords stored encrypted in ~/.mylogin.cnf
+- ✅ **No exposure**: Passwords never appear in process lists
+- ✅ **No environment variables**: No need to export passwords
+- ✅ **Audit trail**: Clear which login path is used
+
+---
+
+## Script Execution
+
+### For a fresh setup:
+
+```bash
+# 1. Set up login path
+mysql_config_editor set --login-path=local \
+  --host=localhost \
+  --user=root \
+  --password
+
+# 2. Deploy everything
+./scripts/deploy.sh
+
+# 3. (Optional) Add seed data for development
+./scripts/deploy.sh --with-seeds
+```
+
+### For updates:
+
+```bash
+# Deploy new migrations
+./scripts/deploy.sh
+
+# Or specify login path
+./scripts/deploy.sh --login-path=production
+```
+
+### For CI/CD:
+
+```bash
+# Validate SQL files
+./scripts/validate.sh
+```
+
+---
 
 ## CI/CD Integration
 
@@ -184,10 +210,11 @@ All scripts:
 
 ## Security Notes
 
-- Never commit database passwords to repository
-- Use environment variables or secret management
-- Scripts prompt for password if not in environment
-- Seed script requires confirmation before execution
+- Passwords stored encrypted using mysql_config_editor
+- No passwords in process lists or environment variables
+- Login paths stored in ~/.mylogin.cnf (encrypted)
+- Never commit credentials to repository
+- Seed script warns before execution
 
 ## Logging
 
@@ -195,6 +222,7 @@ Scripts provide detailed output including:
 - ✓ Success indicators (green)
 - ✗ Error indicators (red)
 - ⚠ Warnings (yellow)
+- 📘 Migration indicators (blue)
 - Execution times
 - File names being processed
 
@@ -203,28 +231,38 @@ Scripts provide detailed output including:
 ### "MySQL client not found"
 Install MySQL client: `apt-get install mysql-client` (Ubuntu/Debian)
 
+### "mysql_config_editor not found"
+mysql_config_editor is included with MySQL client. Ensure MySQL client 5.6+ is installed.
+
+### "Login path not found"
+Create the login path first:
+```bash
+mysql_config_editor set --login-path=local --host=localhost --user=root --password
+```
+
 ### "Permission denied"
 Make scripts executable: `chmod +x scripts/*.sh`
 
-### "Database does not exist"
-Run `init_schema.sh` first
+### "Database already exists"
+The deploy script will skip schema initialization and only apply migrations.
 
 ### "Migration already applied"
-This is normal - migrate.sh skips already-applied migrations
+This is normal - deploy.sh skips already-applied migrations
 
 ## Development Workflow
 
 1. Create new migration: `migrations/V004__your_change.sql`
-2. Test locally: `./scripts/migrate.sh`
+2. Test locally: `./scripts/deploy.sh`
 3. Validate: `./scripts/validate.sh`
 4. Commit and push
 5. CI validates automatically
-6. Deploy to staging/production
+6. Deploy to staging/production with `./scripts/deploy.sh --login-path=production`
 
 ## Maintenance
 
 Scripts are designed to be:
 - Self-contained
-- Minimal dependencies
+- Minimal dependencies (just MySQL client)
 - Easy to understand and modify
 - Compatible with standard bash environments
+- Secure by default (mysql_config_editor)

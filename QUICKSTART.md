@@ -8,11 +8,17 @@
 git clone https://github.com/MathieuBengle/lumanitech-erp-db-finance.git
 cd lumanitech-erp-db-finance
 
-# Initialize database (one-time)
-export MYSQL_PASSWORD=your_password
-./scripts/init_schema.sh
-./scripts/migrate.sh
-./scripts/seed.sh  # Development only
+# Set up MySQL login path (one-time)
+mysql_config_editor set --login-path=local \
+  --host=localhost \
+  --user=root \
+  --password
+
+# Deploy database (schema + migrations)
+./scripts/deploy.sh
+
+# Or deploy with seed data (development only)
+./scripts/deploy.sh --with-seeds
 ```
 
 ### Daily Development
@@ -21,7 +27,7 @@ export MYSQL_PASSWORD=your_password
 git pull
 
 # Apply new migrations
-./scripts/migrate.sh
+./scripts/deploy.sh
 
 # Validate SQL before committing
 ./scripts/validate.sh
@@ -34,7 +40,7 @@ ls migrations/ | grep "^V" | tail -1
 # If last is V003, next is V004
 
 # 2. Create migration file
-cat > migrations/V004__add_your_feature.sql << 'EOF'
+cat > migrations/V004__add_your_feature.sql << 'EOFMIG'
 -- ============================================================================
 -- Migration: V004__add_your_feature
 -- Description: Description of what this migration does
@@ -46,10 +52,10 @@ USE lumanitech_erp_finance;
 
 -- Your SQL statements here
 
-EOF
+EOFMIG
 
 # 3. Test locally
-./scripts/migrate.sh
+./scripts/deploy.sh
 
 # 4. Validate
 ./scripts/validate.sh
@@ -68,9 +74,7 @@ git push
 ├── migrations/      # Versioned changes (V001, V002, etc.)
 ├── seeds/           # Sample data (dev/test only)
 ├── scripts/         # Management scripts
-│   ├── init_schema.sh   # Create database
-│   ├── migrate.sh       # Apply migrations
-│   ├── seed.sh          # Load seeds
+│   ├── deploy.sh        # Single deployment script
 │   └── validate.sh      # Validate SQL
 └── docs/            # Documentation
     ├── ARCHITECTURE.md  # Design & ownership
@@ -83,15 +87,13 @@ git push
 ### New Developer Onboarding
 1. Install MySQL client
 2. Clone repository
-3. Set MYSQL_PASSWORD
-4. Run init_schema.sh
-5. Run migrate.sh
-6. Run seed.sh (dev data)
+3. Set up login path with `mysql_config_editor`
+4. Run `./scripts/deploy.sh --with-seeds`
 
 ### Updating Database Schema
 1. Create new migration file (V###__description.sql)
 2. Write SQL changes
-3. Test locally: `./scripts/migrate.sh`
+3. Test locally: `./scripts/deploy.sh`
 4. Validate: `./scripts/validate.sh`
 5. Commit and push
 6. CI validates automatically
@@ -106,24 +108,50 @@ git push
 ### Deployment Process
 ```bash
 # 1. Staging
-export MYSQL_PASSWORD=$STAGING_PASSWORD
-./scripts/migrate.sh
+./scripts/deploy.sh --login-path=staging
 
 # 2. Verify staging
 # Test with API
 
 # 3. Production (during maintenance window)
-export MYSQL_PASSWORD=$PROD_PASSWORD
-./scripts/migrate.sh
+./scripts/deploy.sh --login-path=production
 ```
 
-## Environment Variables
+## MySQL Login Path Management
+
+### Setting up Login Paths
 
 ```bash
-# Set these in your environment or CI/CD
-export MYSQL_USER=root              # Default: root
-export MYSQL_PASSWORD=your_password # Required
-export DB_NAME=lumanitech_erp_finance # Default (optional)
+# Local development
+mysql_config_editor set --login-path=local \
+  --host=localhost \
+  --user=root \
+  --password
+
+# Staging environment
+mysql_config_editor set --login-path=staging \
+  --host=staging-db.example.com \
+  --user=db_user \
+  --password
+
+# Production environment
+mysql_config_editor set --login-path=production \
+  --host=prod-db.example.com \
+  --user=db_user \
+  --password
+```
+
+### Managing Login Paths
+
+```bash
+# List all login paths
+mysql_config_editor print --all
+
+# Test a login path
+mysql --login-path=local -e "SELECT 1;"
+
+# Remove a login path
+mysql_config_editor remove --login-path=old_env
 ```
 
 ## Troubleshooting
@@ -137,26 +165,29 @@ sudo apt-get install mysql-client
 brew install mysql-client
 ```
 
+### "mysql_config_editor not found"
+mysql_config_editor is included with MySQL client 5.6+. Install or update MySQL client.
+
+### "Login path not found"
+```bash
+# Create the login path first
+mysql_config_editor set --login-path=local --host=localhost --user=root --password
+```
+
 ### "Permission denied" on scripts
 ```bash
 chmod +x scripts/*.sh
 ```
 
-### "Database does not exist"
-```bash
-# Run schema initialization first
-./scripts/init_schema.sh
-```
+### "Database already exists"
+The deploy script will skip schema initialization and only apply migrations. This is normal.
 
 ### "Migration already applied"
-```bash
-# This is normal - migrations are idempotent
-# Script will skip already-applied migrations
-```
+This is normal - deploy.sh skips already-applied migrations.
 
 ### View applied migrations
 ```bash
-mysql -u root -p lumanitech_erp_finance -e \
+mysql --login-path=local lumanitech_erp_finance -e \
   "SELECT version, description, installed_on FROM schema_migrations ORDER BY id;"
 ```
 
@@ -187,7 +218,7 @@ mysql -u root -p lumanitech_erp_finance -e \
 5. ❌ Never apply seeds to production
 6. ✅ Always test migrations locally first
 7. ❌ Never use rollback (forward-only)
-8. ✅ Always backup before production migration
+8. ✅ Always use mysql_config_editor for credentials
 
 ## Links to Full Documentation
 
@@ -197,3 +228,4 @@ mysql -u root -p lumanitech_erp_finance -e \
 - [Migration Guide](migrations/README.md)
 - [CI/CD Examples](docs/CI_EXAMPLES.md)
 - [Migration Checklist](docs/MIGRATION_CHECKLIST.md)
+- [Scripts Documentation](scripts/README.md)

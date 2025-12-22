@@ -105,13 +105,13 @@ For completely new deployments:
 ```bash
 # Setup test database
 export MYSQL_PASSWORD=test_password
-./scripts/init_schema.sh
+./scripts/deploy.sh
 
 # Apply your migration
-./scripts/migrate.sh
+./scripts/deploy.sh
 
 # Test with seed data
-./scripts/seed.sh
+./scripts/deploy.sh --with-seeds
 
 # Verify the changes
 mysql -u root -p lumanitech_erp_finance -e "DESCRIBE new_table;"

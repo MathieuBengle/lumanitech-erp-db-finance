@@ -28,9 +28,7 @@ lumanitech-erp-db-finance/
 │   ├── 03_fiscal_periods.sql
 │   └── README.md
 ├── scripts/                # Management and CI/CD scripts
-│   ├── init_schema.sh      # Initialize schema
-│   ├── migrate.sh          # Apply migrations
-│   ├── seed.sh             # Load seed data
+│   ├── deploy.sh           # Single deployment script
 │   ├── validate.sh         # Validate SQL (CI-ready)
 │   └── README.md
 ├── docs/                   # Documentation
@@ -55,18 +53,17 @@ lumanitech-erp-db-finance/
 git clone https://github.com/MathieuBengle/lumanitech-erp-db-finance.git
 cd lumanitech-erp-db-finance
 
-# 2. Set up database credentials (optional)
-export MYSQL_USER=root
-export MYSQL_PASSWORD=your_password
+# 2. Set up MySQL login path with credentials
+mysql_config_editor set --login-path=local \
+  --host=localhost \
+  --user=root \
+  --password
 
-# 3. Initialize the schema
-./scripts/init_schema.sh
+# 3. Deploy schema and migrations
+./scripts/deploy.sh
 
-# 4. Apply migrations
-./scripts/migrate.sh
-
-# 5. Load seed data (development only)
-./scripts/seed.sh
+# 4. (Optional) Load seed data for development
+./scripts/deploy.sh --with-seeds
 ```
 
 ### Validate SQL Files
@@ -181,7 +178,7 @@ Recommended deployment process:
 ```bash
 # Production deployment example
 export MYSQL_PASSWORD=$PROD_DB_PASSWORD
-./scripts/migrate.sh
+./scripts/deploy.sh
 ```
 
 ## Documentation

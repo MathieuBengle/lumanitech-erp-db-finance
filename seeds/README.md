@@ -22,7 +22,7 @@ Seed files populate the database with:
 ### Apply All Seeds
 
 ```bash
-./scripts/seed.sh
+./scripts/deploy.sh --with-seeds
 ```
 
 ### Apply Individual Seed
