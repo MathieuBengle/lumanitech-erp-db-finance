@@ -15,10 +15,10 @@ mysql_config_editor set --login-path=local \
   --password
 
 # Deploy database (schema + migrations)
-./scripts/deploy.sh
+./scripts/setup.sh
 
 # Or deploy with seed data (development only)
-./scripts/deploy.sh --with-seeds
+./scripts/setup.sh --with-seeds
 ```
 
 ### Daily Development
@@ -27,7 +27,7 @@ mysql_config_editor set --login-path=local \
 git pull
 
 # Apply new migrations
-./scripts/deploy.sh
+./scripts/setup.sh
 
 # Validate SQL before committing
 ./scripts/validate.sh
@@ -55,7 +55,7 @@ USE lumanitech_erp_finance;
 EOFMIG
 
 # 3. Test locally
-./scripts/deploy.sh
+./scripts/setup.sh
 
 # 4. Validate
 ./scripts/validate.sh
@@ -74,7 +74,7 @@ git push
 ├── migrations/      # Versioned changes (V001, V002, etc.)
 ├── seeds/           # Sample data (dev/test only)
 ├── scripts/         # Management scripts
-│   ├── deploy.sh        # Single deployment script
+│   ├── setup.sh        # Single deployment script
 │   └── validate.sh      # Validate SQL
 └── docs/            # Documentation
     ├── ARCHITECTURE.md  # Design & ownership
@@ -88,12 +88,12 @@ git push
 1. Install MySQL client
 2. Clone repository
 3. Set up login path with `mysql_config_editor`
-4. Run `./scripts/deploy.sh --with-seeds`
+4. Run `./scripts/setup.sh --with-seeds`
 
 ### Updating Database Schema
 1. Create new migration file (V###__description.sql)
 2. Write SQL changes
-3. Test locally: `./scripts/deploy.sh`
+3. Test locally: `./scripts/setup.sh`
 4. Validate: `./scripts/validate.sh`
 5. Commit and push
 6. CI validates automatically
@@ -108,13 +108,13 @@ git push
 ### Deployment Process
 ```bash
 # 1. Staging
-./scripts/deploy.sh --login-path=staging
+./scripts/setup.sh --login-path=staging
 
 # 2. Verify staging
 # Test with API
 
 # 3. Production (during maintenance window)
-./scripts/deploy.sh --login-path=production
+./scripts/setup.sh --login-path=production
 ```
 
 ## MySQL Login Path Management
@@ -183,7 +183,7 @@ chmod +x scripts/*.sh
 The deploy script will skip schema initialization and only apply migrations. This is normal.
 
 ### "Migration already applied"
-This is normal - deploy.sh skips already-applied migrations.
+This is normal - setup.sh skips already-applied migrations.
 
 ### View applied migrations
 ```bash

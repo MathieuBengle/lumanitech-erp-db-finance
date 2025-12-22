@@ -51,7 +51,7 @@ USE lumanitech_erp_finance;
 Migrations should be applied in order using the migration script:
 
 ```bash
-./scripts/deploy.sh
+./scripts/setup.sh
 ```
 
 Or manually:

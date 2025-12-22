@@ -4,22 +4,22 @@ This directory contains utility scripts for database management and CI/CD integr
 
 ## Available Scripts
 
-### deploy.sh
+### setup.sh
 **Purpose**: Single deployment script for schema, migrations, and optionally seed data
 
 **Usage**:
 ```bash
 # Basic deployment (schema + migrations)
-./scripts/deploy.sh
+./scripts/setup.sh
 
 # Deployment with seed data (dev/test only)
-./scripts/deploy.sh --with-seeds
+./scripts/setup.sh --with-seeds
 
 # Use specific login path
-./scripts/deploy.sh --login-path=production
+./scripts/setup.sh --login-path=production
 
 # Show help
-./scripts/deploy.sh --help
+./scripts/setup.sh --help
 ```
 
 **What it does**:
@@ -145,20 +145,20 @@ mysql_config_editor set --login-path=local \
   --password
 
 # 2. Deploy everything
-./scripts/deploy.sh
+./scripts/setup.sh
 
 # 3. (Optional) Add seed data for development
-./scripts/deploy.sh --with-seeds
+./scripts/setup.sh --with-seeds
 ```
 
 ### For updates:
 
 ```bash
 # Deploy new migrations
-./scripts/deploy.sh
+./scripts/setup.sh
 
 # Or specify login path
-./scripts/deploy.sh --login-path=production
+./scripts/setup.sh --login-path=production
 ```
 
 ### For CI/CD:
@@ -248,16 +248,16 @@ Make scripts executable: `chmod +x scripts/*.sh`
 The deploy script will skip schema initialization and only apply migrations.
 
 ### "Migration already applied"
-This is normal - deploy.sh skips already-applied migrations
+This is normal - setup.sh skips already-applied migrations
 
 ## Development Workflow
 
 1. Create new migration: `migrations/V004__your_change.sql`
-2. Test locally: `./scripts/deploy.sh`
+2. Test locally: `./scripts/setup.sh`
 3. Validate: `./scripts/validate.sh`
 4. Commit and push
 5. CI validates automatically
-6. Deploy to staging/production with `./scripts/deploy.sh --login-path=production`
+6. Deploy to staging/production with `./scripts/setup.sh --login-path=production`
 
 ## Maintenance
 

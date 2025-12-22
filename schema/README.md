@@ -26,7 +26,7 @@ mysql -u root -p lumanitech_erp_finance < schema/05_fiscal_periods.sql
 
 Or use the provided script:
 ```bash
-./scripts/deploy.sh
+./scripts/setup.sh
 ```
 
 ## Notes

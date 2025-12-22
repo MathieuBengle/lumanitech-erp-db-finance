@@ -28,7 +28,7 @@ lumanitech-erp-db-finance/
 │   ├── 03_fiscal_periods.sql
 │   └── README.md
 ├── scripts/                # Management and CI/CD scripts
-│   ├── deploy.sh           # Single deployment script
+│   ├── setup.sh           # Single deployment script
 │   ├── validate.sh         # Validate SQL (CI-ready)
 │   └── README.md
 ├── docs/                   # Documentation
@@ -48,23 +48,63 @@ lumanitech-erp-db-finance/
 
 ### Setup Development Database
 
+#### 1. Clone the Repository
+
 ```bash
-# 1. Clone the repository
 git clone https://github.com/MathieuBengle/lumanitech-erp-db-finance.git
 cd lumanitech-erp-db-finance
-
-# 2. Set up MySQL login path with credentials
-mysql_config_editor set --login-path=local \
-  --host=localhost \
-  --user=root \
-  --password
-
-# 3. Deploy schema and migrations
-./scripts/deploy.sh
-
-# 4. (Optional) Load seed data for development
-./scripts/deploy.sh --with-seeds
 ```
+
+#### 2. Automated Setup (Recommended)
+
+Use the setup script to create and initialize the database in one step:
+
+```bash
+# Basic setup (without seed data)
+./scripts/setup.sh
+./scripts/setup.sh --login-path=local
+
+# With seed data for development
+./scripts/setup.sh --with-seeds
+./scripts/setup.sh --login-path=local --with-seeds
+
+# Custom user or host
+./scripts/setup.sh -u myuser -h localhost --with-seeds
+
+# See all options
+./scripts/setup.sh --help
+```
+
+The script will:
+1. Create the database
+2. Create all tables
+3. Apply all migrations
+4. Optionally load seed data
+
+Note: the setup script supports using stored credentials from `mysql_config_editor`.
+You can pass a saved login path with `--login-path NAME` or set the environment
+variable `MYSQL_LOGIN_PATH=NAME` before running the script. When provided, the
+script will not prompt for a password and will use the login path to connect.
+
+Example using `mysql_config_editor` (recommended for local dev on WSL2/Linux):
+
+```bash
+# store credentials securely (runs interactively)
+mysql_config_editor set --login-path=local --host=localhost --user=admin --password
+
+# run setup using the saved login path
+./scripts/setup.sh --login-path=local --with-seeds
+
+# or export the env var instead of passing --login-path
+export MYSQL_LOGIN_PATH=local
+./scripts/setup.sh --with-seeds
+```
+
+If you don't use `mysql_config_editor`, the script will prompt once for the
+database password and reuse it for all operations. Avoid passing passwords on
+the command line in production.
+
+You only need to enter your MySQL password **once**.
 
 ### Validate SQL Files
 
@@ -178,7 +218,7 @@ Recommended deployment process:
 ```bash
 # Production deployment example (using mysql_config_editor)
 mysql_config_editor set --login-path=finance_prod --host=db-prod.example.com --user=finance_app
-./scripts/deploy.sh --login-path=finance_prod
+./scripts/setup.sh --login-path=finance_prod
 ```
 
 ## Documentation

@@ -103,21 +103,23 @@ For completely new deployments:
 ### 4. Test Your Changes
 
 ```bash
-# Setup test database
-export MYSQL_PASSWORD=test_password
-./scripts/deploy.sh
+# Setup MySQL login path for test database (one-time setup)
+mysql_config_editor set --login-path=finance_local --host=localhost --user=root --password
+
+# Initialize schema and run migrations
+./scripts/setup.sh --login-path=finance_local
 
 # Apply your migration
-./scripts/deploy.sh
+./scripts/setup.sh --login-path=finance_local
 
 # Test with seed data
-./scripts/deploy.sh --with-seeds
+./scripts/setup.sh --login-path=finance_local --with-seeds
 
 # Verify the changes
-mysql -u root -p lumanitech_erp_finance -e "DESCRIBE new_table;"
+mysql --login-path=finance_local lumanitech_erp_finance -e "DESCRIBE new_table;"
 
 # Check migration tracking
-mysql -u root -p lumanitech_erp_finance -e \
+mysql --login-path=finance_local lumanitech_erp_finance -e \
   "SELECT * FROM schema_migrations ORDER BY id;"
 ```
 
