@@ -64,7 +64,7 @@ jobs:
           mysql_config_editor set --login-path=ci \
             --host=127.0.0.1 \
             --user=root \
-            --password --skip-warn <<< "test_password"
+            --password=test_password
       
       - name: Deploy database
         run: |
