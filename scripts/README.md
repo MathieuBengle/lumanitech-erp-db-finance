@@ -202,12 +202,13 @@ validate-sql:
 
 ## Error Handling
 
-All scripts:
-- Exit on first error (`set -e`)
+Most scripts:
+- Exit on first error (`set -e`) to fail fast on unexpected problems
 - Provide colored output for visibility
 - Return appropriate exit codes
 - Log operations for troubleshooting
 
+Note: `validate.sh` intentionally does **not** use `set -e` so it can process all files and report all validation errors in a single run.
 ## Security Notes
 
 - Passwords stored encrypted using mysql_config_editor
