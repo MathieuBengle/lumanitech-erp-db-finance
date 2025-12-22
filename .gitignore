@@ -1,0 +1,53 @@
+# MySQL Database Files
+*.sql~
+*.sql.bak
+*.backup
+
+# Database dumps
+*.dump
+*.dmp
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.*.sw[a-z]
+
+# OS files
+.DS_Store
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+*.err
+
+# Environment files (database credentials should never be committed)
+.env
+.env.local
+.env.*.local
+
+# Test/Development databases
+/test_db/
+/dev_db/
+
+# MySQL Workbench files
+*.mwb.bak
+
+# Build artifacts
+/build/
+/dist/
+/output/
+
+# Docker volumes (if any are created locally)
+/volumes/
+/data/
