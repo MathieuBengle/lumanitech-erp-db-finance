@@ -188,7 +188,14 @@ load_seed_data() {
         warn "Seed directory not found ($SEED_DIR)"
         return
     fi
-    for seed in "$(ls "$SEED_DIR"/*.sql 2>/dev/null | sort)"; do
+    local seeds=("$SEED_DIR"/*.sql)
+    if [ ${#seeds[@]} -eq 0 ]; then
+        warn "No seed files found"
+        return
+    fi
+    IFS=$'\n' seeds_sorted=($(printf '%s\n' "${seeds[@]}" | sort))
+    unset IFS
+    for seed in "${seeds_sorted[@]}"; do
         if [ -f "$seed" ]; then
             info "Executing seed $(basename "$seed")"
             mysql_exec -D "$DB_NAME" < "$seed"
