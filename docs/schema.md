@@ -1,14 +1,39 @@
 # Database Schema Documentation
 
-## Database: lumanitech_erp_finance
+## Overview
 
-Character Set: `utf8mb4`  
-Collation: `utf8mb4_unicode_ci`  
-Engine: `InnoDB`
+This document describes the database schema for the Lumanitech ERP Finance module.
 
-## Table Reference
+## Database Information
 
-### Core Tables
+- **Database Name**: `lumanitech_erp_finance`
+- **Character Set**: `utf8mb4`
+- **Collation**: `utf8mb4_unicode_ci`
+- **Engine**: InnoDB (default)
+- **MySQL Version**: 8.0+
+
+## Tables
+
+### schema_migrations
+
+Tracks which migrations have been applied to the database.
+
+**Purpose**: Migration tracking and version control
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| version | VARCHAR(50) | PRIMARY KEY | Migration version (e.g., V001, V002) |
+| description | VARCHAR(255) | | Migration description |
+| applied_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | When migration was applied |
+
+**Indexes:**
+- `idx_applied_at` on `applied_at`
+
+**Usage:**
+```sql
+-- Check applied migrations
+SELECT * FROM schema_migrations ORDER BY version;
+```
 
 #### accounts
 **Purpose**: Chart of Accounts - defines all financial accounts in the system

@@ -15,19 +15,19 @@ This project follows a **forward-only migration strategy**:
 
 Migration files must follow this naming pattern:
 ```
-V{version}__{description}.sql
+V###_description.sql
 ```
 
 Examples:
-- `V001__create_migration_tracking_table.sql`
-- `V002__add_budget_tables.sql`
-- `V003__add_currency_support.sql`
+- `V001_create_migration_tracking_table.sql`
+- `V002_add_budget_tables.sql`
+- `V003_add_currency_support.sql`
 
 Where:
 - **V** - Prefix indicating a versioned migration
-- **{version}** - Zero-padded sequential number (001, 002, 003...)
-- **__** - Double underscore separator
-- **{description}** - Snake_case description of the change
+- **###** - Zero-padded sequential number (001, 002, 003...)
+- **_** - Single underscore separator
+- **description** - Snake_case description of the change
 
 ## Migration File Structure
 
@@ -35,7 +35,7 @@ Each migration file should include:
 
 ```sql
 -- ============================================================================
--- Migration: V{version}__{description}
+-- Migration: V###_description
 -- Description: Detailed description of changes
 -- Date: YYYY-MM-DD
 -- Author: Name or System
@@ -44,33 +44,47 @@ Each migration file should include:
 USE lumanitech_erp_finance;
 
 -- Your SQL statements here
+
+-- ============================================================================
+-- Self-tracking: Record this migration
+-- ============================================================================
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('V###', 'description')
+ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP;
 ```
 
 ## Applying Migrations
 
-Migrations should be applied in order using the migration script:
+Migrations should be applied in order using the deployment script:
 
 ```bash
-./scripts/setup.sh
+./scripts/deploy.sh
 ```
 
 Or manually:
 ```bash
-mysql -u root -p lumanitech_erp_finance < migrations/V001__create_migration_tracking_table.sql
-mysql -u root -p lumanitech_erp_finance < migrations/V002__add_budget_tables.sql
-mysql -u root -p lumanitech_erp_finance < migrations/V003__add_currency_support.sql
+mysql -u root -p lumanitech_erp_finance < migrations/V001_create_migration_tracking_table.sql
+mysql -u root -p lumanitech_erp_finance < migrations/V002_add_budget_tables.sql
+mysql -u root -p lumanitech_erp_finance < migrations/V003_add_currency_support.sql
 ```
 
 ## Migration Tracking
 
 The `schema_migrations` table tracks all applied migrations:
-- Version number
+- Version (e.g., V001, V002, V003)
 - Description
-- Script name
-- Checksum (for verification)
-- Installation timestamp
-- Execution time
-- Success status
+- Applied timestamp
+
+**Standard schema:**
+```sql
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version VARCHAR(50) PRIMARY KEY,
+  description VARCHAR(255),
+  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_applied_at (applied_at)
+);
+```
 
 ## Best Practices
 
