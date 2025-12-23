@@ -1,63 +1,175 @@
 # Seeds Directory
 
-This directory contains sample data for initializing the Finance database.
+This directory contains SQL scripts to populate the database with initial or test data.
 
 ## Purpose
 
-Seed files populate the database with:
-- Reference data (currencies, fiscal periods)
-- Sample chart of accounts
-- Test/demo data for development
+Seed data files:
+- Provide sample data for local development
+- Enable testing with realistic data
+- Populate reference/lookup tables
+- Support different environments (dev, staging, etc.)
 
-## Files
+⚠️ **Important**: Seed data is for **development and testing only**. Production data should never be committed to this repository.
 
-1. **01_currencies.sql** - Common currency definitions
-2. **02_chart_of_accounts.sql** - Sample chart of accounts structure
-3. **03_fiscal_periods.sql** - Fiscal periods for the current year
+## Structure
+
+```
+seeds/
+└── dev/              # Development environment seed data
+    ├── 01_currencies.sql
+    ├── 02_chart_of_accounts.sql
+    └── 03_fiscal_periods.sql
+```
+
+**Environments:**
+- `dev/` - Local development and testing
+- `staging/` - (Future) Staging environment data
+- `test/` - (Future) Automated test data
 
 ## Usage
 
-**Important**: Seeds should only be applied to development/testing environments, not production.
+### Loading Seed Data
 
-### Apply All Seeds
-
-```bash
-./scripts/setup.sh --with-seeds
-```
-
-### Apply Individual Seed
+Use the deployment script with `--with-seeds` flag:
 
 ```bash
-mysql -u root -p lumanitech_erp_finance < seeds/01_currencies.sql
-mysql -u root -p lumanitech_erp_finance < seeds/02_chart_of_accounts.sql
-mysql -u root -p lumanitech_erp_finance < seeds/03_fiscal_periods.sql
+./scripts/deploy.sh --with-seeds
 ```
 
-## When to Use Seeds
+Or load manually:
 
-- **Development**: Initialize a new development database
-- **Testing**: Set up test data for integration tests
-- **Demo**: Populate demo environment with realistic data
-- **Never**: Do NOT use in production (except reference data like currencies)
+```bash
+# Load all dev seed data
+for f in seeds/dev/*.sql; do
+    echo "Loading $f"
+    mysql -u root -p lumanitech_erp_finance < "$f"
+done
 
-## Idempotency
+# Load specific seed file
+mysql -u root -p lumanitech_erp_finance < seeds/dev/01_currencies.sql
+```
 
-Seed files use `ON DUPLICATE KEY UPDATE` or similar patterns to be idempotent:
-- Running them multiple times produces the same result
-- Safe to re-run during development
-- Won't create duplicate records
+### Typical Workflow
 
-## Customization
+```bash
+# 1. Create fresh database and apply schema
+./scripts/deploy.sh
 
-Organizations should:
-1. Modify `02_chart_of_accounts.sql` to match their specific chart of accounts
-2. Update `03_fiscal_periods.sql` for their fiscal year structure
-3. Add organization-specific reference data as needed
+# 2. Load seed data
+./scripts/deploy.sh --with-seeds
+```
 
-## Production Data
+## ⚠️ Production Warning
 
-For production environments:
-- Load only essential reference data (currencies, etc.)
-- Create production-specific chart of accounts
-- Set up fiscal periods through application or admin scripts
-- Never use development/test seed data
+**NEVER** load development seed data into production environments. Seed data is for:
+- Local development
+- Testing environments  
+- Demo/staging environments
+
+Production data should be:
+- Migrated from existing systems
+- Entered through the application
+- Loaded via approved data migration scripts
+
+## Seed File Guidelines
+
+### DO ✅
+
+- Use `INSERT IGNORE` or `ON DUPLICATE KEY UPDATE` for idempotency
+- Include diverse, realistic test data
+- Document what the seed data represents
+- Use consistent formatting
+- Include data for edge cases
+- Make seeds rerunnable
+
+### DON'T ❌
+
+- Include real customer data
+- Include sensitive information (passwords, keys, PII)
+- Include production data
+- Make seeds environment-dependent
+- Use absolute values for timestamps (use CURRENT_TIMESTAMP or relative dates)
+
+## Seed File Format
+
+```sql
+-- ============================================================================
+-- Seed: Description of seed data
+-- Environment: dev
+-- ============================================================================
+
+USE lumanitech_erp_finance;
+
+-- Use INSERT IGNORE for idempotency
+INSERT IGNORE INTO table_name (id, name, status) VALUES
+(1, 'Example 1', 'active'),
+(2, 'Example 2', 'active'),
+(3, 'Example 3', 'inactive');
+```
+
+## Current Seed Files
+
+### dev/01_currencies.sql
+
+Provides common currency definitions including:
+- USD (US Dollar)
+- EUR (Euro)
+- CAD (Canadian Dollar)
+- GBP (British Pound)
+- JPY (Japanese Yen)
+
+### dev/02_chart_of_accounts.sql
+
+Provides sample chart of accounts with:
+- Asset accounts
+- Liability accounts
+- Equity accounts
+- Revenue accounts
+- Expense accounts
+
+### dev/03_fiscal_periods.sql
+
+Provides fiscal period definitions for testing.
+
+## Idempotency Strategies
+
+### Using INSERT IGNORE
+
+```sql
+INSERT IGNORE INTO currencies (currency_code, currency_name)
+VALUES ('USD', 'US Dollar');
+```
+
+### Using ON DUPLICATE KEY UPDATE
+
+```sql
+INSERT INTO currencies (currency_code, currency_name)
+VALUES ('USD', 'US Dollar')
+ON DUPLICATE KEY UPDATE currency_name = currency_name;
+```
+
+## Data Privacy
+
+**NEVER** include:
+- Real customer names, emails, or phone numbers
+- Actual tax IDs or government identifiers
+- Real payment information
+- Production passwords or API keys
+- Personal Identifiable Information (PII)
+
+Use:
+- Fake but realistic data
+- Example.com domain emails
+- Placeholder values
+- Generic company names
+- Test account codes
+
+## Maintenance
+
+Regularly review and update seed data to:
+- Add new test scenarios
+- Include examples of new features
+- Remove obsolete data
+- Ensure data remains realistic
+- Update for schema changes
