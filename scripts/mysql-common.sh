@@ -14,6 +14,11 @@ DB_NAME="lumanitech_erp_finance"
 LOGIN_PATH=""
 
 # =============================================================================
+# Detect if running in WSL2
+is_wsl2() {
+    grep -qi microsoft /proc/version 2>/dev/null
+}
+
 # Parse common MySQL connection arguments
 # =============================================================================
 # Parses standard arguments: --login-path, -h/--host, -u/--user, database name
