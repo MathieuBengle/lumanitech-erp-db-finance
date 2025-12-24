@@ -147,6 +147,32 @@ exec_mysql -e "CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_un
 echo -e "${GREEN}✓ Database created${NC}"
 echo ""
 
+# Apply schema definitions (tables + objects)
+apply_schema() {
+    local schema_dirs=(tables views procedures functions triggers indexes)
+    for dir in "${schema_dirs[@]}"; do
+        schema_dir="$PROJECT_ROOT/schema/$dir"
+        if [[ -d "$schema_dir" ]]; then
+            echo "Processing schema/$dir..."
+            for file in "$schema_dir"/*.sql; do
+                [[ -f "$file" ]] || continue
+                basename_file=$(basename "$file")
+                [[ "$basename_file" == "placeholder.sql" ]] && continue
+                [[ "$basename_file" == "README.md" ]] && continue
+                echo -e "Applying schema/$dir/$basename_file..."
+                if ! exec_mysql "$DB_NAME" < "$file"; then
+                    echo -e "${RED}Error: Failed to apply schema file $file${NC}"
+                    exit 1
+                fi
+            done
+        fi
+    done
+}
+
+# Apply schema definitions before migrations
+echo "Applying schema definitions..."
+apply_schema
+
 # Apply migrations
 echo "Applying migrations..."
 MIGRATIONS_DIR="$PROJECT_ROOT/migrations"
