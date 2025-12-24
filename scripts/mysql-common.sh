@@ -10,7 +10,7 @@
 declare -a MYSQL_CMD
 DB_HOST=""
 DB_USER=""
-DB_NAME=""
+DB_NAME="lumanitech_erp_finance"
 LOGIN_PATH=""
 
 # =============================================================================
@@ -24,11 +24,24 @@ parse_mysql_args() {
     # Default values
     DB_HOST="${DB_HOST:-localhost}"
     DB_USER="${DB_USER:-root}"
+    DB_NAME="${DB_NAME:-lumanitech_erp_finance}"
     
     while [[ $# -gt 0 ]]; do
         case $1 in
             --login-path=*)
                 LOGIN_PATH="${1#*=}"
+                shift
+                ;;
+            --host=*)
+                DB_HOST="${1#*=}"
+                shift
+                ;;
+            --user=*)
+                DB_USER="${1#*=}"
+                shift
+                ;;
+            --database=*)
+                DB_NAME="${1#*=}"
                 shift
                 ;;
             --login-path)
@@ -56,6 +69,11 @@ parse_mysql_args() {
                 ;;
         esac
     done
+
+    if is_wsl2 && [[ -z "$DB_HOST" || "$DB_HOST" == "localhost" ]]; then
+        DB_HOST="127.0.0.1"
+        echo "[INFO] WSL2 detected: forcing host to $DB_HOST to prefer TCP connections." >&2
+    fi
 }
 
 # =============================================================================
