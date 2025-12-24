@@ -1,168 +1,113 @@
 #!/bin/bash
-
-# ============================================================================
+# =============================================================================
 # Script: validate.sh
-# Description: Validate SQL files for syntax errors (CI-ready)
-# Usage: ./scripts/validate.sh
-# Exit codes: 0 = success, 1 = validation errors found
-# ============================================================================
+# Description: Run all validation checks on Finance database
+# Usage: ./validate.sh
+# =============================================================================
 
-# Note: We don't use 'set -e' here because we want to validate all files
-# and report all errors, not exit on the first one
+set -e
 
-# Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Colors for output
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-# Counters
-total_files=0
-valid_files=0
-invalid_files=0
+echo -e "${BLUE}==============================================================================${NC}"
+echo -e "${BLUE}Finance Database Validation${NC}"
+echo -e "${BLUE}==============================================================================${NC}"
+echo ""
 
-# Function to print colored output
-print_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
+ERRORS=0
 
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+# Step 1: Validate SQL syntax
+echo -e "${BLUE}Step 1: Validating SQL syntax...${NC}"
+if "$SCRIPT_DIR/validate-sql-syntax.sh"; then
+    echo -e "${GREEN}✓ SQL syntax validation passed${NC}"
+else
+    echo -e "${RED}✗ SQL syntax validation failed${NC}"
+    ERRORS=$((ERRORS + 1))
+fi
+echo ""
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+# Step 2: Validate migrations
+echo -e "${BLUE}Step 2: Validating migrations...${NC}"
+if "$SCRIPT_DIR/validate-migrations.sh"; then
+    echo -e "${GREEN}✓ Migration validation passed${NC}"
+else
+    echo -e "${RED}✗ Migration validation failed${NC}"
+    ERRORS=$((ERRORS + 1))
+fi
+echo ""
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+# Step 3: Validate schema structure
+echo -e "${BLUE}Step 3: Validating schema structure...${NC}"
+schema_dir="$PROJECT_ROOT/schema"
 
-# Function to validate SQL file
-validate_sql_file() {
-    local file=$1
-    local relative_path=$(realpath --relative-to="$PROJECT_ROOT" "$file")
-    
-    ((total_files++))
-    
-    # Basic syntax checks
-    local errors=()
-    
-    # Check 1: File is not empty
-    if [ ! -s "$file" ]; then
-        errors+=("File is empty")
+# Check required directories
+for dir in tables views procedures functions triggers indexes; do
+    if [ -d "$schema_dir/$dir" ]; then
+        echo -e "${GREEN}✓${NC} $dir/ directory exists"
+    else
+        echo -e "${RED}✗${NC} $dir/ directory missing"
+        ERRORS=$((ERRORS + 1))
     fi
-    
-    # Check 2: File contains SQL keywords
-    if ! grep -qi -E "(CREATE|ALTER|INSERT|UPDATE|DELETE|SELECT|DROP|USE)" "$file"; then
-        errors+=("No SQL keywords found")
-    fi
-    
-    # Check 3: Balanced parentheses
-    local open_parens=$(grep -o "(" "$file" | wc -l)
-    local close_parens=$(grep -o ")" "$file" | wc -l)
-    if [ "$open_parens" -ne "$close_parens" ]; then
-        errors+=("Unbalanced parentheses (open: $open_parens, close: $close_parens)")
-    fi
-    
-    # Check 4: No tabs (prefer spaces)
-    if grep -q $'\t' "$file"; then
-        print_warning "$relative_path: Contains tabs (spaces preferred)"
-    fi
-    
-    # Check 5: File ends with newline
-    if [ -n "$(tail -c 1 "$file")" ]; then
-        print_warning "$relative_path: File does not end with newline"
-    fi
-    
-    # Check 6: Migration files follow naming convention
-    if [[ "$file" == *"/migrations/"* ]]; then
-        local filename=$(basename "$file")
-        if ! [[ "$filename" =~ ^V[0-9]+__[a-z_]+\.sql$ ]]; then
-            errors+=("Migration file does not follow naming convention V###__description.sql")
+done
+echo ""
+
+# Step 4: Validate seeds structure
+echo -e "${BLUE}Step 4: Validating seeds structure...${NC}"
+seeds_dir="$PROJECT_ROOT/seeds"
+
+if [ -d "$seeds_dir/dev" ]; then
+    echo -e "${GREEN}✓${NC} seeds/dev/ directory exists"
+else
+    echo -e "${RED}✗${NC} seeds/dev/ directory missing"
+    ERRORS=$((ERRORS + 1))
+fi
+echo ""
+
+# Step 5: Validate schema file naming
+echo -e "${BLUE}Step 5: Validate schema file naming...${NC}"
+
+check_dir="$schema_dir/procedures"
+if [[ -d "$check_dir" ]]; then
+    for f in "$check_dir"/*.sql; do
+        [[ -f "$f" ]] || continue
+        name=$(basename "$f")
+        if [[ ! "$name" =~ ^sp_[a-z0-9_]+\.sql$ ]]; then
+            echo -e "${RED}✗ Invalid procedure filename: $name (expected sp_name.sql)${NC}"
+            ERRORS=$((ERRORS + 1))
+        else
+            echo -e "${GREEN}✓${NC} $name"
         fi
-    fi
-    
-    # Check 7: UTF-8 encoding (ASCII is acceptable as it's a subset of UTF-8)
-    if ! file "$file" | grep -qE "(UTF-8|ASCII)"; then
-        errors+=("File is not UTF-8/ASCII encoded")
-    fi
-    
-    # Report results
-    if [ ${#errors[@]} -eq 0 ]; then
-        print_success "✓ $relative_path"
-        ((valid_files++))
-        return 0
-    else
-        print_error "✗ $relative_path"
-        for error in "${errors[@]}"; do
-            echo "    - $error"
-        done
-        ((invalid_files++))
-        return 1
-    fi
-}
+    done
+fi
 
-# Main execution
-main() {
-    print_info "Starting SQL validation..."
-    print_info "Project root: $PROJECT_ROOT"
-    echo
-    
-    # Validate schema files
-    if [ -d "$PROJECT_ROOT/schema" ]; then
-        print_info "Validating schema files..."
-        for sql_file in "$PROJECT_ROOT/schema"/*.sql; do
-            if [ -f "$sql_file" ]; then
-                validate_sql_file "$sql_file"
-            fi
-        done
-        echo
-    fi
-    
-    # Validate migration files
-    if [ -d "$PROJECT_ROOT/migrations" ]; then
-        print_info "Validating migration files..."
-        for sql_file in "$PROJECT_ROOT/migrations"/*.sql; do
-            if [ -f "$sql_file" ]; then
-                validate_sql_file "$sql_file"
-            fi
-        done
-        echo
-    fi
-    
-    # Validate seed files
-    if [ -d "$PROJECT_ROOT/seeds" ]; then
-        print_info "Validating seed files..."
-        for sql_file in "$PROJECT_ROOT/seeds"/*.sql; do
-            if [ -f "$sql_file" ]; then
-                validate_sql_file "$sql_file"
-            fi
-        done
-        echo
-    fi
-    
-    # Print summary
-    echo "========================================"
-    print_info "Validation Summary"
-    echo "========================================"
-    echo "Total files:   $total_files"
-    echo "Valid files:   $valid_files"
-    echo "Invalid files: $invalid_files"
-    echo "========================================"
-    
-    if [ $invalid_files -eq 0 ]; then
-        print_success "All SQL files passed validation! ✓"
-        exit 0
-    else
-        print_error "Validation failed with $invalid_files error(s)"
-        exit 1
-    fi
-}
+check_dir="$schema_dir/triggers"
+if [[ -d "$check_dir" ]]; then
+    for f in "$check_dir"/*.sql; do
+        [[ -f "$f" ]] || continue
+        name=$(basename "$f")
+        if [[ ! "$name" =~ ^trg_[a-z0-9_]+\.sql$ ]]; then
+            echo -e "${RED}✗ Invalid trigger filename: $name (expected trg_name.sql)${NC}"
+            ERRORS=$((ERRORS + 1))
+        else
+            echo -e "${GREEN}✓${NC} $name"
+        fi
+    done
+fi
+echo ""
 
-# Run main function
-main "$@"
+# Summary
+echo -e "${BLUE}==============================================================================${NC}"
+if [ $ERRORS -eq 0 ]; then
+    echo -e "${GREEN}✓ All validation checks passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}✗ Validation failed with $ERRORS error(s)${NC}"
+    exit 1
+fi

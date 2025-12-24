@@ -1,182 +1,171 @@
 # Lumanitech ERP - Finance Database
 
-MySQL database repository for the Finance module of Lumanitech ERP system.
+This repository contains the MySQL database schema, migrations, and seed data for the Finance module of the Lumanitech ERP system.
 
 ## Overview
 
-This repository contains **database schema, migrations, and seed data only** - no application code. The database is owned and accessed exclusively by the Finance API service.
+This is a **SQL-only repository** containing database definitions and migration scripts. No application code is included here.
+
+## Ownership
+
+This database is **owned and managed by the Finance API**. The API service is responsible for:
+- Executing migrations during deployment
+- Managing database schema changes
+- Ensuring data integrity and consistency
+
+⚠️ **Important**: Direct database modifications outside of the migration system are not permitted. All schema changes must be made through versioned migration scripts.
 
 ## Repository Structure
 
 ```
-lumanitech-erp-db-finance/
-├── schema/                 # Base database schema (initial structure)
+.
+├── schema/              # Current database schema (DDL)
 │   ├── 01_create_database.sql
-│   ├── 02_accounts.sql
-│   ├── 03_transactions.sql
-│   ├── 04_transaction_lines.sql
-│   ├── 05_fiscal_periods.sql
-│   └── README.md
-├── migrations/             # Versioned migration scripts (forward-only)
-│   ├── V001__create_migration_tracking_table.sql
-│   ├── V002__add_budget_tables.sql
-│   ├── V003__add_currency_support.sql
-│   └── README.md
-├── seeds/                  # Sample/reference data (dev/test only)
-│   ├── 01_currencies.sql
-│   ├── 02_chart_of_accounts.sql
-│   ├── 03_fiscal_periods.sql
-│   └── README.md
-├── scripts/                # Management and CI/CD scripts
-│   ├── setup.sh           # Single deployment script
-│   ├── validate.sh         # Validate SQL (CI-ready)
-│   └── README.md
-├── docs/                   # Documentation
-│   ├── ARCHITECTURE.md     # Database architecture and ownership
-│   └── SCHEMA.md           # Detailed schema documentation
-├── .gitignore              # Git ignore rules
-└── README.md               # This file
+│   ├── tables/         # Table definitions
+│   ├── views/          # View definitions
+│   ├── procedures/     # Stored procedures
+│   ├── functions/      # User-defined functions
+│   ├── triggers/       # Database triggers
+│   └── indexes/        # Index definitions
+├── migrations/         # Versioned migration scripts
+│   ├── TEMPLATE.sql
+│   ├── V001_create_migration_tracking_table.sql
+│   ├── V002_add_budget_tables.sql
+│   └── V003_add_currency_support.sql
+├── seeds/              # Seed data for development/testing
+│   ├── README.md
+│   └── dev/           # Development seed data
+│       ├── 01_currencies.sql
+│       ├── 02_chart_of_accounts.sql
+│       └── 03_fiscal_periods.sql
+├── docs/               # Documentation
+│   ├── migration-strategy.md
+│   └── schema.md
+└── scripts/            # CI/CD validation scripts
+    ├── deploy.sh
+    ├── validate.sh
+    └── README.md
 ```
 
-## Quick Start
+## Migration Strategy
 
-### Prerequisites
+This repository follows a **forward-only migration** strategy:
 
-- MySQL 8.0 or higher
-- MySQL client (`mysql` command)
-- Bash shell
+### Principles
 
-### Setup Development Database
+1. **Never modify existing migrations** - Once a migration is committed, it should never be changed
+2. **Always create new migrations** - To fix issues, create a new migration that corrects the problem
+3. **Sequential versioning** - Migrations are named: `V###_description.sql`
+4. **Idempotent when possible** - Migrations should check for existence before creating objects
+5. **Rollback via new migrations** - To undo changes, create a new migration that reverses them
 
-#### 1. Clone the Repository
+### Migration Naming Convention
 
-```bash
-git clone https://github.com/MathieuBengle/lumanitech-erp-db-finance.git
-cd lumanitech-erp-db-finance
-
-
-
-#### 2. Automated Setup (Recommended)
-
-Use the setup script to create and initialize the database in one step:
-
-```bash
-# Make the deployment script executable (required once)
-chmod +x ./scripts/deploy.sh
-
-# Basic setup (without seed data)
-./scripts/setup.sh
-./scripts/setup.sh --login-path=local
-
-# With seed data for development
-./scripts/setup.sh --with-seeds
-./scripts/setup.sh --login-path=local --with-seeds
-
-# Custom user or host
-./scripts/setup.sh -u myuser -h localhost --with-seeds
-
-# See all options
-./scripts/setup.sh --help
+```
+V###_description.sql
 ```
 
-The script will:
-1. Create the database
-2. Create all tables
-3. Apply all migrations
-4. Optionally load seed data
+Examples:
+- `V001_create_migration_tracking_table.sql`
+- `V002_add_budget_tables.sql`
+- `V003_add_currency_support.sql`
 
-Note: the setup script supports using stored credentials from `mysql_config_editor`.
-You can pass a saved login path with `--login-path NAME` or set the environment
-variable `MYSQL_LOGIN_PATH=NAME` before running the script. When provided, the
-script will not prompt for a password and will use the login path to connect.
+### Creating a Migration
 
-Example using `mysql_config_editor` (recommended for local dev on WSL2/Linux):
+1. Determine next version: `ls migrations/ | grep "^V" | sort -V | tail -1`
+2. Create file: `cp migrations/TEMPLATE.sql migrations/V004_your_description.sql`
+3. Write SQL with proper guards:
 
-```bash
-# store credentials securely (runs interactively)
-mysql_config_editor set --login-path=local --host=localhost --user=admin --password
+```sql
+-- ============================================================================
+-- Migration: V004_your_description
+-- Description: Brief description of what this migration does
+-- Author: Your Name
+-- Date: YYYY-MM-DD
+-- ============================================================================
 
-# run setup using the saved login path
-./scripts/setup.sh --login-path=local --with-seeds
+USE lumanitech_erp_finance;
 
-# or export the env var instead of passing --login-path
-export MYSQL_LOGIN_PATH=local
-./scripts/setup.sh --with-seeds
+-- Your SQL statements here
+CREATE TABLE IF NOT EXISTS example_table (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+-- ============================================================================
+-- Self-tracking: Record this migration
+-- ============================================================================
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('V004', 'your_description')
+ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP;
 ```
 
-The deployment script now supports several options that make CI-friendly setups consistent with the other repos:
+4. Test locally
+5. Commit and push
 
-- `--login-path=NAME` or the `MYSQL_LOGIN_PATH` environment variable reuse a stored `mysql_config_editor` path instead of prompting for passwords.
-- `--database=NAME`, `--host=HOST` and `--user=USER` allow overriding the defaults (for example `./scripts/deploy.sh --database=lumanitech_projects --login-path=local`).
-- If no login path can be found, the script prompts once for the MySQL password and reuses it for the entire run, so credentials never appear on the command line.
+### Migration Execution Order
 
-The script prints the selected login path (or reports that it will use an interactive password) at startup, so you always know which credentials were used.
+Migrations are executed in alphabetical order (version numbers ensure chronological order).
+The deployment script tracks which migrations have been applied using a `schema_migrations` table.
 
-### Validate SQL Files
+## Seed Data
+
+The `seeds/` directory contains SQL scripts to populate the database with initial or test data:
+
+- `seeds/dev/` - Development environment data
+- Use seed data for local development and testing
+- Seed scripts should be idempotent (safe to run multiple times)
+
+## CI/CD Validation
+
+The `scripts/validate.sh` script validates SQL syntax and migration naming conventions.
+This script runs automatically in CI/CD pipelines before merging.
+
+### Running Validation Locally
 
 ```bash
 ./scripts/validate.sh
 ```
 
-## Database Ownership
+## Getting Started
 
-### Owner: Finance API Service
+### Prerequisites
 
-The Finance database is **owned by the Finance API**. This means:
+- MySQL 8.0+
+- Access to the target database environment
 
-- ✅ All database access goes through the Finance API
-- ✅ API contains all business logic and validation
-- ✅ Database enforces referential integrity only
-- ❌ No direct database access by other services
-- ❌ No application code in this repository
+### Local Development
 
-### Access Control
-
-| Access Type | Allowed For | Purpose |
-|-------------|-------------|---------|
-| Read/Write via API | Finance API Service | Normal operations |
-| Direct SQL (read-only) | BI/Reporting tools | Analytics, reports |
-| Direct SQL (admin) | DBAs | Maintenance, backups |
-| Migration scripts | CI/CD pipeline | Schema updates |
-
-## Migration Strategy
-
-This project follows a **strict forward-only migration strategy**:
-
-### Principles
-
-1. **Versioned migrations** - Each migration has a unique version number
-2. **Immutable migrations** - Once applied, NEVER modify a migration
-3. **Forward-only** - No rollback scripts
-4. **Tracked history** - All migrations tracked in `schema_migrations` table
-5. **To fix errors** - Create a new migration, don't edit existing ones
-
-### Migration Naming
-
-```
-V{version}__{description}.sql
+1. Clone this repository:
+```bash
+git clone <repository-url>
+cd lumanitech-erp-db-finance
 ```
 
-Examples:
-- `V001__create_migration_tracking_table.sql`
-- `V002__add_budget_tables.sql`
-- `V003__add_currency_support.sql`
+2. Make the deployment script executable (required once):
+```bash
+chmod +x ./scripts/deploy.sh
+```
 
-### Creating Migrations
+3. Store credentials with mysql_config_editor (the script defaults to login-path `local` / user `admin`):
+```bash
+mysql_config_editor set --login-path=local \
+    --host=localhost \
+    --user=admin \
+    --password
+```
 
-1. Determine next version number
-2. Create file following naming convention
-3. Write SQL with proper header comments
-4. Test in development environment
-5. Run validation: `./scripts/validate.sh`
-6. Commit to repository
-7. Apply via CI/CD pipeline
+4. Deploy schema, migrations, and maintenance seeds:
+```bash
+./scripts/deploy.sh --login-path=local --with-seeds
+```
 
-**See** [migrations/README.md](migrations/README.md) for detailed guidelines.
+The deployment script installs the schema (tables, views, procedures, functions, triggers, indexes), applies every versioned migration under `migrations/`, and conditionally loads `seeds/dev/`. It prints the login path (or reports that it will prompt for a password) so you always know which credentials are in use.
 
-## Core Database Features
+## Database Features
 
-### Entities
+### Core Entities
 
 - **Accounts** - Chart of accounts (hierarchical)
 - **Transactions** - Journal entries (double-entry bookkeeping)
@@ -195,115 +184,51 @@ Examples:
 - Complete audit trail (timestamps, user tracking)
 - Referential integrity via foreign keys
 
-## CI/CD Integration
+## Contributing
 
-### Validation in CI
+### Making Schema Changes
 
-Add to your CI pipeline:
+1. Create a new migration file with the next version number
+2. Write idempotent SQL when possible
+3. Test migration locally
+4. Run validation: `./scripts/validate.sh`
+5. Commit and create pull request
+6. Ensure CI checks pass
 
-```yaml
-# GitHub Actions example
-- name: Validate SQL
-  run: ./scripts/validate.sh
-```
+### Best Practices
 
-**Exit codes**:
-- `0` - All validations passed
-- `1` - Validation errors found
-
-### Deployment
-
-Recommended deployment process:
-
-1. **Development**: Test migrations locally
-2. **CI**: Validate SQL syntax and conventions
-3. **Staging**: Apply migrations to staging database
-4. **Validation**: Test with staging API
-5. **Production**: Apply migrations during maintenance window
-
-```bash
-# Production deployment example (using mysql_config_editor)
-mysql_config_editor set --login-path=finance_prod --host=db-prod.example.com --user=finance_app
-./scripts/setup.sh --login-path=finance_prod
-```
+- ✅ Use `IF NOT EXISTS` / `IF EXISTS` for idempotency
+- ✅ Include rollback instructions in migration comments
+- ✅ Test migrations on a copy of production data
+- ✅ Keep migrations small and focused
+- ✅ Document complex changes
+- ❌ Never modify existing migrations
+- ❌ Never commit sensitive data or credentials
+- ❌ Avoid breaking changes without coordination
 
 ## Documentation
 
 Detailed documentation available in `/docs`:
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Database architecture, ownership model, design principles
-- **[SCHEMA.md](docs/SCHEMA.md)** - Complete schema documentation with all tables and relationships
+- **[migration-strategy.md](docs/migration-strategy.md)** - Migration guidelines and best practices
+- **[schema.md](docs/schema.md)** - Complete schema documentation with all tables and relationships
 
 Each directory also has its own README:
-- [schema/README.md](schema/README.md) - Schema files documentation
 - [migrations/README.md](migrations/README.md) - Migration guidelines and best practices
 - [seeds/README.md](seeds/README.md) - Seed data usage and customization
 - [scripts/README.md](scripts/README.md) - Script usage and CI integration
 
-## Development Guidelines
+## Support
 
-### Making Changes
-
-1. **Never modify existing migrations** - Create new ones
-2. **Test locally first** - Use development database
-3. **Validate before committing** - Run `./scripts/validate.sh`
-4. **Document changes** - Update docs if schema changes significantly
-5. **Keep migrations focused** - One logical change per migration
-
-### Code Style
-
-- Use consistent formatting (2 or 4 space indentation)
-- Add comments for complex logic
-- Follow existing naming conventions
-- Use UPPERCASE for SQL keywords
-- Include descriptive header comments
-
-### Testing
-
-- Test migrations in isolation
-- Verify foreign key constraints
-- Check index performance
-- Test with seed data
-- Validate business rules
-
-## Security
-
-- ⚠️ **Never commit credentials** to repository
-- Use environment variables for passwords
-- Database credentials managed separately
-- SSL/TLS for database connections in production
-- Principle of least privilege for database users
-
-## Support and Contribution
-
-### Reporting Issues
-
-- Database bugs: Create issue with error logs
-- Schema questions: Check documentation first
-- Migration problems: Include migration version and error
-
-### Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Add your migration(s)
-4. Validate with `./scripts/validate.sh`
-5. Submit pull request
-6. Ensure CI checks pass
-
-## License
-
-[Specify your license here]
-
-## Authors
-
-- Lumanitech ERP Team
+For questions or issues:
+- Create an issue in this repository
+- Contact the Finance API team
+- See `docs/` for additional documentation
 
 ## Related Projects
 
-- **lumanitech-erp-finance-api** - Finance API service (owner of this database)
-- **lumanitech-erp-db-*** - Other module databases
+- **lumanitech-erp-api-finance** - Finance API service (owner of this database)
 
----
+## License
 
-**Remember**: This is a database repository only. No application code belongs here.
+Internal use only - Lumanitech ERP System

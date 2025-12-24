@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration: V002__add_budget_tables
+-- Migration: V002_add_budget_tables
 -- Description: Add tables for budget management
 -- Date: 2025-12-21
 -- Author: System
@@ -57,3 +57,11 @@ CREATE TABLE IF NOT EXISTS budget_lines (
     ON DELETE RESTRICT
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- Self-tracking: Record this migration
+-- ============================================================================
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('V002', 'add_budget_tables')
+ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP;

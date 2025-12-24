@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration: V003__add_currency_support
+-- Migration: V003_add_currency_support
 -- Description: Add multi-currency support to the system
 -- Date: 2025-12-21
 -- Author: System
@@ -60,3 +60,11 @@ ALTER TABLE transactions
     REFERENCES currencies(id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE;
+
+-- ============================================================================
+-- Self-tracking: Record this migration
+-- ============================================================================
+
+INSERT INTO schema_migrations (version, description)
+VALUES ('V003', 'add_currency_support')
+ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP;

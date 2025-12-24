@@ -1,309 +1,315 @@
 # Contributing to Lumanitech ERP Finance Database
 
-Thank you for your interest in contributing to the Finance database repository!
+Thank you for contributing to the Finance database repository! This guide will help you make successful contributions.
 
-## Code of Conduct
+## Getting Started
 
-- Be respectful and professional
-- Focus on constructive feedback
-- Collaborate openly
-- Follow project conventions
+1. **Read the documentation:**
+   - [README.md](README.md) - Overview and setup
+   - [docs/migration-strategy.md](docs/migration-strategy.md) - Migration best practices
+   - [docs/schema.md](docs/schema.md) - Current schema documentation
 
-## How to Contribute
+2. **Set up your local environment:**
+   ```bash
+   # Clone repository
+   git clone <repository-url>
+   cd lumanitech-erp-db-finance
+   
+   # Create local database
+   mysql -u root -p -e "CREATE DATABASE lumanitech_erp_finance CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+   
+   # Apply migrations
+   ./scripts/deploy.sh --with-seeds
+   ```
 
-### Reporting Issues
+## Making Changes
 
-When reporting a bug or issue:
+### Before You Start
 
-1. **Search existing issues** first
-2. **Provide details**:
-   - Database version (MySQL version)
-   - Migration version where issue occurs
-   - Error messages and logs
-   - Steps to reproduce
-3. **Use issue templates** if available
+1. **Create a feature branch:**
+   ```bash
+   git checkout -b feature/your-change-description
+   ```
 
-### Suggesting Enhancements
+2. **Understand the change:**
+   - Is this a new table, column, index, or view?
+   - Does it affect existing data?
+   - Is it a breaking change?
+   - Have you coordinated with the API team?
 
-For new features or changes:
+### Creating a Migration
 
-1. **Open a discussion** or issue first
-2. **Explain the use case** and benefit
-3. **Consider backward compatibility**
-4. **Propose the schema changes**
-5. **Wait for feedback** before implementing
-
-## Development Workflow
-
-### 1. Fork and Clone
-
-```bash
-# Fork the repository on GitHub, then:
-git clone https://github.com/YOUR_USERNAME/lumanitech-erp-db-finance.git
-cd lumanitech-erp-db-finance
-git remote add upstream https://github.com/MathieuBengle/lumanitech-erp-db-finance.git
-```
-
-### 2. Create a Feature Branch
-
-```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/issue-description
-```
-
-### 3. Make Changes
-
-#### Creating Migrations
-
-1. Determine the next version number:
+1. **Determine next version:**
    ```bash
    ls migrations/ | grep "^V" | sort -V | tail -1
+   # If last is V003, next is V004
    ```
 
-2. Create migration file:
+2. **Create migration file:**
    ```bash
-   # Follow naming convention: V###__description.sql
-   vim migrations/V004__add_payment_methods.sql
+   cp migrations/TEMPLATE.sql migrations/V004_your_description.sql
    ```
 
-3. Add proper header:
-   ```sql
-   -- ============================================================================
-   -- Migration: V004__add_payment_methods
-   -- Description: Add payment methods table for transaction processing
-   -- Date: 2025-12-21
-   -- Author: Your Name
-   -- ============================================================================
+3. **Edit the migration:**
+   - Update header (version, description, author, date)
+   - Write your SQL changes
+   - Use idempotent patterns (IF NOT EXISTS, IF EXISTS)
+   - Update self-tracking INSERT statement
+   - Document rollback in comments
+
+4. **Test locally:**
+   ```bash
+   # Apply your migration
+   mysql -u root -p lumanitech_erp_finance < migrations/V004_your_description.sql
    
-   USE lumanitech_erp_finance;
+   # Verify changes
+   mysql -u root -p lumanitech_erp_finance -e "SHOW TABLES;"
+   mysql -u root -p lumanitech_erp_finance -e "DESCRIBE table_name;"
    
-   -- Your SQL statements here
+   # Test idempotency (run again)
+   mysql -u root -p lumanitech_erp_finance < migrations/V004_your_description.sql
    ```
 
-4. Write idempotent SQL when possible:
+5. **Update schema files (if major change):**
+   ```bash
+   # For new tables or significant changes
+   mysqldump -u root -p --no-data --skip-add-drop-table lumanitech_erp_finance table_name > schema/tables/new_table.sql
+   ```
+
+6. **Run validation:**
+   ```bash
+   ./scripts/validate.sh
+   ```
+
+### Creating Seed Data
+
+1. **Create seed file:**
+   ```bash
+   touch seeds/dev/new_seed.sql
+   ```
+
+2. **Write idempotent SQL:**
    ```sql
-   CREATE TABLE IF NOT EXISTS table_name (...);
-   ALTER TABLE table_name ADD COLUMN IF NOT EXISTS column_name ...;
+   -- Use INSERT IGNORE or ON DUPLICATE KEY UPDATE
+   INSERT IGNORE INTO table_name (id, name) VALUES
+   (1, 'Test Data');
+   
+   -- Verify
+   SELECT COUNT(*) FROM table_name;
    ```
 
-#### Modifying Schema (New Projects Only)
+3. **Test:**
+   ```bash
+   mysql -u root -p lumanitech_erp_finance < seeds/dev/new_seed.sql
+   # Run again to verify idempotency
+   mysql -u root -p lumanitech_erp_finance < seeds/dev/new_seed.sql
+   ```
 
-For completely new deployments:
-- Schema files can be modified BEFORE first deployment
-- After deployment, changes go through migrations only
+## Code Review Process
 
-#### Updating Seeds
+### Before Submitting
 
-- Seeds are for development/testing only
-- Use `ON DUPLICATE KEY UPDATE` for idempotency
-- Keep seed data realistic but not real
-- No sensitive or personal data
+- [ ] Migration naming follows convention: `V###_description.sql`
+- [ ] Migration has required header fields
+- [ ] SQL is idempotent where possible
+- [ ] Tested locally on fresh database
+- [ ] Tested locally on database with existing data
+- [ ] Validation script passes: `./scripts/validate.sh`
+- [ ] No sensitive data included
+- [ ] Schema documentation updated (if needed)
+- [ ] Coordinated with API team for breaking changes
 
-### 4. Test Your Changes
+### Submitting Pull Request
 
-```bash
-# Setup MySQL login path for test database (one-time setup)
-mysql_config_editor set --login-path=finance_local --host=localhost --user=root --password
+1. **Commit your changes:**
+   ```bash
+   git add migrations/V004_your_description.sql
+   git commit -m "Add migration V004: your_description"
+   git push origin feature/your-change-description
+   ```
 
-# Initialize schema and run migrations
-./scripts/setup.sh --login-path=finance_local
+2. **Create pull request:**
+   - Clear title describing the change
+   - Description explaining WHY the change is needed
+   - Reference any related issues
+   - Tag relevant reviewers
 
-# Apply your migration
-./scripts/setup.sh --login-path=finance_local
+3. **PR description template:**
+   ```markdown
+   ## Description
+   Brief description of what this migration does.
+   
+   ## Motivation
+   Why is this change needed?
+   
+   ## Changes
+   - List of specific changes
+   - Tables/columns affected
+   
+   ## Testing
+   - [ ] Tested on fresh database
+   - [ ] Tested on database with existing data
+   - [ ] Validation script passes
+   
+   ## Breaking Changes
+   None / List any breaking changes
+   
+   ## Rollback Plan
+   Describe how to rollback if needed (usually via new migration)
+   ```
 
-# Test with seed data
-./scripts/setup.sh --login-path=finance_local --with-seeds
+### Review Process
 
-# Verify the changes
-mysql --login-path=finance_local lumanitech_erp_finance -e "DESCRIBE new_table;"
+1. Automated CI checks will run validation script
+2. Code review by database team
+3. API team approval for breaking changes
+4. Merge to main branch
+5. Automatic deployment in next release
 
-# Check migration tracking
-mysql --login-path=finance_local lumanitech_erp_finance -e \
-  "SELECT * FROM schema_migrations ORDER BY id;"
-```
+## Best Practices
 
-### 5. Validate
+### SQL Style
 
-```bash
-# Run validation script
-./scripts/validate.sh
-
-# Should output: "All SQL files passed validation! ✓"
-```
-
-### 6. Document Changes
-
-Update documentation if needed:
-
-- **docs/SCHEMA.md** - For new tables or significant schema changes
-- **docs/ARCHITECTURE.md** - For architectural changes
-- **migrations/README.md** - For migration process changes
-- **README.md** - For major feature additions
-
-### 7. Commit Changes
-
-```bash
-# Stage your changes
-git add migrations/V004__add_payment_methods.sql
-git add docs/SCHEMA.md  # if updated
-
-# Commit with descriptive message
-git commit -m "Add payment methods table
-
-- Create payment_methods table
-- Add foreign key to transactions
-- Include common payment types
-- Update schema documentation"
-
-# Push to your fork
-git push origin feature/your-feature-name
-```
-
-### 8. Create Pull Request
-
-1. Go to GitHub and create a Pull Request
-2. Fill in the PR template:
-   - **Description**: What does this change?
-   - **Motivation**: Why is this needed?
-   - **Testing**: How was it tested?
-   - **Documentation**: What docs were updated?
-3. Wait for CI checks to pass
-4. Address review feedback
-
-## Coding Standards
-
-### SQL Style Guide
-
-#### Formatting
 ```sql
--- Use UPPERCASE for SQL keywords
+-- Use uppercase for SQL keywords
 CREATE TABLE accounts (
-  -- Use lowercase_with_underscores for identifiers
-  account_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  account_name VARCHAR(255) NOT NULL,
-  
-  -- Align column definitions
-  PRIMARY KEY (account_id),
-  KEY idx_account_name (account_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
+    -- Lowercase for identifiers
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
 
-#### Indentation
-- Use 2 spaces (not tabs)
-- Indent nested blocks
-- Align related statements
+-- Indent nested queries
+SELECT a.id, a.name
+FROM accounts a
+WHERE a.status IN (
+    SELECT DISTINCT status
+    FROM active_statuses
+);
 
-#### Comments
-```sql
--- Use single-line comments for brief explanations
-/*
- * Use multi-line comments for:
- * - Complex logic explanation
- * - Business rules
- * - Important notes
- */
+-- One column per line for readability
+INSERT INTO accounts (
+    account_code,
+    account_name,
+    status
+) VALUES (
+    '1100',
+    'Cash',
+    'active'
+);
 ```
 
 ### Naming Conventions
 
-#### Tables
-- Use lowercase with underscores: `fiscal_periods`
-- Use plural nouns: `accounts`, `transactions`
-- Be descriptive: `transaction_lines` not `trans_ln`
+- **Tables**: lowercase, plural (e.g., `accounts`, `transactions`)
+- **Columns**: lowercase, snake_case (e.g., `account_name`, `created_at`)
+- **Indexes**: `idx_tablename_columnname` (e.g., `idx_accounts_code`)
+- **Foreign keys**: `fk_tablename_columnname` (e.g., `fk_transactions_account_id`)
+- **Views**: lowercase, descriptive (e.g., `active_accounts`)
+- **Procedures**: lowercase, verb_noun (e.g., `update_account_balance`)
 
-#### Columns
-- Use lowercase with underscores: `created_at`
-- Be descriptive: `transaction_date` not `trans_dt`
-- Suffix IDs with `_id`: `account_id`, `transaction_id`
-- Use consistent naming across tables
+### Common Patterns
 
-#### Indexes
-- Primary keys: Use `PRIMARY KEY`
-- Unique: Prefix with `uk_`: `uk_account_code`
-- Non-unique: Prefix with `idx_`: `idx_transaction_date`
+#### Adding a Column (Safe)
 
-#### Foreign Keys
-- Prefix with `fk_`: `fk_transaction_lines_account`
-- Format: `fk_{table}_{referenced_table}`
+```sql
+ALTER TABLE accounts 
+ADD COLUMN IF NOT EXISTS phone VARCHAR(50) NULL 
+COMMENT 'Primary phone number';
+```
 
-#### Constraints
-- Check constraints: Prefix with `chk_`: `chk_amount_positive`
+#### Adding an Index
 
-### Migration Standards
+```sql
+CREATE INDEX IF NOT EXISTS idx_accounts_code 
+ON accounts(account_code);
+```
 
-1. **One logical change per migration**
-   - Don't mix unrelated changes
-   - Keep migrations focused
+#### Modifying Column (Safe - Extending)
 
-2. **Include rollback notes**
-   ```sql
-   -- Rollback: To manually rollback, execute:
-   -- DROP TABLE payment_methods;
-   -- ALTER TABLE transactions DROP COLUMN payment_method_id;
+```sql
+-- Safe: Extending VARCHAR
+ALTER TABLE accounts 
+MODIFY COLUMN account_code VARCHAR(100) NOT NULL;
+```
+
+#### Modifying Column (Unsafe - Breaking)
+
+```sql
+-- Unsafe: Shortening VARCHAR or changing type
+-- Requires data validation first
+ALTER TABLE accounts 
+MODIFY COLUMN account_code VARCHAR(20) NOT NULL;
+```
+
+#### Renaming Column (Breaking - Requires Coordination)
+
+```sql
+-- Step 1: Add new column
+ALTER TABLE accounts 
+ADD COLUMN account_name VARCHAR(255) NULL;
+
+-- Step 2: Copy data (new migration)
+UPDATE accounts SET account_name = name;
+
+-- Step 3: Drop old column (new migration after API update)
+ALTER TABLE accounts DROP COLUMN name;
+```
+
+## Troubleshooting
+
+### Validation Fails
+
+```bash
+# Run validation to see errors
+./scripts/validate.sh
+
+# Common issues:
+# - Wrong naming format
+# - Missing header fields
+# - Missing self-tracking INSERT
+```
+
+### Migration Fails Locally
+
+```bash
+# Check current state
+mysql -u root -p lumanitech_erp_finance -e "SELECT * FROM schema_migrations ORDER BY version;"
+
+# Drop and recreate database
+mysql -u root -p -e "DROP DATABASE IF EXISTS lumanitech_erp_finance;"
+./scripts/deploy.sh --with-seeds
+```
+
+### Merge Conflicts
+
+If two migrations have the same version number:
+
+1. Regenerate version number for your migration:
+   ```bash
+   # Get next available version
+   ls migrations/ | grep "^V" | sort -V | tail -1
    ```
 
-3. **Consider performance**
-   - Large migrations on big tables need planning
-   - Consider adding indexes AFTER data loads
-   - Test migration time
+2. Rename file and update version in SQL
 
-4. **Handle existing data**
-   - Use ALTER TABLE carefully
-   - Provide default values for new NOT NULL columns
-   - Consider data migrations for transformations
-
-## Review Process
-
-### What Reviewers Look For
-
-- ✅ Follows naming conventions
-- ✅ Proper indexing strategy
-- ✅ Foreign key constraints
-- ✅ Check constraints for data integrity
-- ✅ Backward compatibility
-- ✅ Performance implications
-- ✅ Documentation updates
-- ✅ Tests passed locally
-- ✅ Validation script passes
-
-### Addressing Feedback
-
-- Respond to all comments
-- Make requested changes or explain why not
-- Push updates to the same branch
-- Request re-review when ready
-
-## CI/CD Pipeline
-
-Our CI automatically:
-
-1. ✅ Validates SQL syntax
-2. ✅ Checks naming conventions
-3. ✅ Tests migrations on MySQL
-4. ✅ Verifies documentation
-5. ✅ Scans for secrets
-
-All checks must pass before merge.
+3. Resolve conflict
 
 ## Getting Help
 
-- **Questions**: Open a discussion or issue
-- **Bugs**: Create an issue with details
-- **Chat**: [Specify your chat channel]
-- **Email**: [Specify contact email]
+- **Questions**: Open an issue or discussion
+- **Bugs**: Open an issue with reproduction steps
+- **API Coordination**: Contact the Finance API team
+- **Emergency**: Contact database administrator
 
-## Recognition
+## Code of Conduct
 
-Contributors will be:
-- Listed in commit history
-- Mentioned in release notes (for significant contributions)
-- Credited in documentation (for major features)
+- Be respectful and professional
+- Test thoroughly before submitting
+- Document complex changes
+- Ask questions if unsure
+- Never commit sensitive data
+- Follow security best practices
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project.
-
----
-
-Thank you for contributing to make this project better! 🎉
+Internal use only - Lumanitech ERP System
